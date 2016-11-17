@@ -14,10 +14,9 @@ In mathematics, our demand is called a "cost function", and the angle
 of the portrait the "parameter".  In a typical optimization problem,
 we vary the parameters until the cost function is minimized.
 
-Consider, for example, the shifted parabola, $f(x) = (x - 3)^2$.  We know
-that this function has a minimum at 3, because we can calculate the
-derivative, set it to zero, and see that $2 (x - 3) = 0$, i.e.  $x =
-3$.
+Consider, for example, the shifted parabola $f(x) = (x - 3)^2$.  We know that
+this function has a minimum at $3$, because we can calculate the derivative, set
+it to zero, and see that $2 (x - 3) = 0$, i.e.  $x = 3$.
 
 But, if this function were much more complicated (e.g., was an
 expression with many terms, had multiple points of zero derivative,
@@ -238,7 +237,31 @@ approximate alignment, and then progressively refine the alignment with sharper
 images.
 
 ```python
-# TODO: ab initio implementation of Gaussian pyramid
+def gaussian_pyramid(image, levels=7):
+    """Make a Gaussian image pyramid.
+
+    Parameters
+    ----------
+    image : array of float
+        The input image.
+    max_layer : int, optional
+        The number of levels in the pyramid.
+
+    Returns
+    -------
+    pyramid : list of array of float
+        A list of Gaussian pyramid levels, starting with the top
+        (lowest resolution) level.
+    """
+    downscale_factor = 2
+    sigma = 2/3
+    pyramid = [image]
+    for level in range(levels):
+        blurred = ndi.gaussian_filter(image, sigma=sigma)
+        image = ndi.zoom(blurred, 1 / downscale_factor)
+        pyramid.append(image)
+    list.reverse(pyramid)  # in-place reverse
+    return pyramid
 ```
 
 Let's see how the 1D alignment looks along that pyramid:
@@ -268,17 +291,14 @@ def cost_nmi(param, X, Y):
 
 # TODO: Generalize this for N-d
 def align(A, B, cost=cost_nmi):
-    pyramid_A = transform.pyramid_gaussian(A, downscale=2, max_layer=7)
-    pyramid_B = transform.pyramid_gaussian(B, downscale=2, max_layer=7)
-    image_pairs = list(zip(pyramid_A, pyramid_B))
-    n_levels = len(image_pairs)
+    pyramid_A = gaussian_pyramid(A, levels=7)
+    pyramid_B = gaussian_pyramid(B, levels=7)
+    n_levels = len(pyramid_A)
 
     p = np.zeros(3)
 
-    for n, (X, Y) in zip(range(n_levels, 0, -1),
-                         reversed(list(image_pairs))):
+    for n, X, Y in zip(range(n_levels, 0, -1), pyramid_A, pyramid_B):
         p[1:] *= 2
-
         res = optimize.minimize(cost, p, args=(X, Y))
         p = res.x
 
@@ -314,17 +334,16 @@ ax2.set_title('Registered image')
 
 Oops! That didn't work at all! Since this is a toy example, we can actually
 look at the cost function for *all* possible angles at each level of the
-pyramid:
+pyramid, to try to see what went wrong:
 
 ```python
 f, ax0 = plt.subplots()
-pyr0 = transform.pyramid_gaussian(img0, downscale=2, max_layer=5)
-pyr1 = transform.pyramid_gaussian(img1, downscale=2, max_layer=5)
-image_pairs = list(zip(pyr0, pyr1))
-n_levels = len(image_pairs)
+pyr0 = gaussian_pyramid(img0, levels=5)
+pyr1 = gaussian_pyramid(img1, levels=5)
+n_levels = len(pyr0)
+
 angles = np.linspace(-theta - 180, -theta + 180, 201)
-for n, (X, Y) in zip(range(n_levels, 0, -1),
-                     reversed(list(image_pairs))):
+for n, X, Y in zip(range(n_levels, 0, -1), pyr0, pyr1):
     costs = np.array([-normalized_mutual_information(X,
                                                      transform.rotate(Y, angle))
                       for angle in angles])
@@ -413,7 +432,7 @@ Next, we use those functions to align the same image:
 ```python
 from skimage import data, transform, color
 
-img0 = transform.rescale(color.rgb2gray(data.astronaut()), 0.3)
+img0 = color.rgb2gray(data.astronaut())
 
 theta = 40
 img1 = transform.rotate(img0, theta)
@@ -443,13 +462,12 @@ Success! Let's look at the objective function profile:
 ```python
 print('Calculating cost function profile...')
 f, ax0 = plt.subplots()
-pyr0 = transform.pyramid_gaussian(img0, downscale=2, max_layer=5)
-pyr1 = transform.pyramid_gaussian(img1, downscale=2, max_layer=5)
-image_pairs = list(zip(pyr0, pyr1))
-n_levels = len(image_pairs)
+pyr0 = gaussian_pyramid(img0, levels=5)
+pyr1 = gaussian_pyramid(img1, levels=5)
+n_levels = len(pyr0)
 angles = np.linspace(-theta - 180, -theta + 180, 201)
-for n, (X, Y) in zip(range(n_levels, 0, -1),
-                     reversed(list(image_pairs))):
+
+for n, X, Y in zip(range(n_levels, 0, -1), pyr0, pyr1):
     costs = np.array([-alignment(X, transform.rotate(Y, angle))
                       for angle in angles])
     costs = (costs - np.min(costs)) / (np.max(costs) - np.min(costs))
