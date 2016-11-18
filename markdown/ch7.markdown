@@ -237,6 +237,8 @@ approximate alignment, and then progressively refine the alignment with sharper
 images.
 
 ```python
+from skimage import transform
+
 def gaussian_pyramid(image, levels=7):
     """Make a Gaussian image pyramid.
 
@@ -253,12 +255,10 @@ def gaussian_pyramid(image, levels=7):
         A list of Gaussian pyramid levels, starting with the top
         (lowest resolution) level.
     """
-    downscale_factor = 2
-    sigma = 2/3
     pyramid = [image]
     for level in range(levels):
-        blurred = ndi.gaussian_filter(image, sigma=sigma)
-        image = ndi.zoom(blurred, 1 / downscale_factor)
+        blurred = ndi.gaussian_filter(image, sigma=2/3)
+        image = transform.rescale(blurred, 1/2)
         pyramid.append(image)
     list.reverse(pyramid)  # in-place reverse
     return pyramid
