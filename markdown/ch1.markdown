@@ -444,6 +444,9 @@ matched_index = pd.Index.intersection(data_table.index, gene_info.index)
 ```
 
 Now let's use the intersection of the gene names to index our count data.
+For this we use the `.loc` attribute of data frames, which specify indexing
+with row indices (in this case, gene symbols). We will also convert the
+result to a NumPy array.
 
 ```python
 # 2D ndarray containing expression counts for each gene in each individual
