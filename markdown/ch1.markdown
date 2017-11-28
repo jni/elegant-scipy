@@ -398,8 +398,7 @@ import pandas as pd
 
 # Import TCGA melanoma data
 filename = 'data/counts.txt'
-with open(filename, 'rt') as f:
-    data_table = pd.read_csv(f, index_col=0) # Parse file with pandas
+data_table = pd.read_csv(filename, index_col=0) # Parse file with pandas
 
 print(data_table.iloc[:5, :5])
 ```
@@ -421,9 +420,7 @@ the index of the pandas table to be the gene names in the first column.
 ```python
 # Import gene lengths
 filename = 'data/genes.csv'
-with open(filename, 'rt') as f:
-    # Parse file with pandas, index by GeneSymbol
-    gene_info = pd.read_csv(f, index_col=0)
+gene_info = pd.read_csv(filename, index_col=0)
 print(gene_info.iloc[:5, :])
 ```
 
